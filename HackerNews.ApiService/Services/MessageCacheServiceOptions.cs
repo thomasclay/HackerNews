@@ -2,14 +2,14 @@
 
 public class MessageCacheServiceOptions
 {
-    private int _cacheExpirationHours = 72;
+    private int _expirationInHours = 72;
 
     /// <summary>
-    /// How long messages stay in the cach, in hours.  Minimum of 1 hour, maximum of 7 days (168 hours).  Default is 72 hours.
+    /// How long messages stay in the cache, in hours. Minimum of 1 hour, maximum of 7 days (168 hours).  Default is 72 hours.
     /// </summary>
-    public int CacheExpirationHours
-    {
-        get => this._cacheExpirationHours;
-        set => this._cacheExpirationHours = Math.Clamp(value, 1, 7 * 24);
+    public int ExpirationInHours 
+    { 
+        get => _expirationInHours; 
+        set => _expirationInHours = Math.Clamp(value, 1, 168); 
     }
 }

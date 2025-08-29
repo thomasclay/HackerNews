@@ -1,6 +1,5 @@
 ﻿using HackerNewsModels;
-
-using Microsoft.Extensions.Caching.Distributed;
+using HackerNewsModels.Items;
 
 namespace HackerNews.ApiService.Services;
 
@@ -14,14 +13,14 @@ public class HackerNewsService : IHackerNewsService
     }
 
     /// <inheritdoc />
-    public Task<Story?> GetAsync(long id, CancellationToken cancellationToken = default)
+    public Task<Item?> GetItemAsync(long id, CancellationToken cancellationToken = default)
     {
-        return this._messageCache.GetStoryAsync(id, cancellationToken);
+        return this._messageCache.GetItemAsync(id, cancellationToken);
     }
 
     /// <inheritdoc />
-    public Task<IEnumerable<Story>> LatestAsync(IHackerNewsService.StoryCategory category, int page = 0, int pageSize = 10, CancellationToken cancellationToken = default) => throw new NotImplementedException();
+    public Task<PagedResponse<Story>> GetStoriesAsync(StoryCategory category, int page = 0, int pageSize = 10, CancellationToken cancellationToken = default) => throw new NotImplementedException();
 
     /// <inheritdoc />
-    public Task<IEnumerable<Story>> FindAsync(string search, int page = 1, int pageSize = 10, CancellationToken cancellationToken = default) => throw new NotImplementedException();
+    public Task<IEnumerable<Story>> FindAsync(StoryCategory category, string searchText, CancellationToken cancellationToken = default) => throw new NotImplementedException();
 }

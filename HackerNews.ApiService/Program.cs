@@ -1,12 +1,17 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
+using Quartz;
 using Refit;
 using Scalar.AspNetCore;
 
-using HackerNewsModels;
+using Common.Utility;
 
+using HackerNews.ApiService.Jobs;
 using HackerNews.ApiService.Services;
+
+using HackerNewsModels;
 
 namespace HackerNews.ApiService;
 
@@ -19,28 +24,86 @@ public static class Program
 
         // Add service defaults & Aspire client integrations.
         builder.AddServiceDefaults();
-        builder.Services.AddDistributedMemoryCache();
+        builder.Services.AddSingleton<FactoryService>();
 
-        builder.Services.AddSingleton<MessageCacheService>();
-        builder.Services.AddScoped<IHackerNewsService, HackerNewsService>();
-        builder.Services.Configure<MessageCacheServiceOptions>(cacheOptions =>
+        builder.Services.AddDistributedMemoryCache();
+        var jsonSerializerOptions = new JsonSerializerOptions(JsonSerializerDefaults.General)
         {
-            if (int.TryParse(builder.Configuration[Names.CacheEntryLifeInHours], out var hours))
-            {
-                cacheOptions.CacheExpirationHours = hours;
-            }
-        });
-        
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+            AllowOutOfOrderMetadataProperties = true,
+            NumberHandling = JsonNumberHandling.AllowReadingFromString,
+            PropertyNameCaseInsensitive = true,
+        };
+        builder.Services.AddSingleton(jsonSerializerOptions);
+        builder.Services.AddSingleton<MessageCacheService>();
+
+        builder.Services.AddScoped<IHackerNewsService, HackerNewsService>();
+        builder.Services.AddOptions<MessageCacheServiceOptions>()
+            .BindConfiguration("Cache");
+
         // Add services to the container.
         builder.Services.AddProblemDetails();
+
+        // Quartz!
+        builder.Services.AddQuartz(q =>
+        {
+            var delay = builder.Configuration.GetValue("JobSchedules:Updates", 1);
+
+            q.AddJob<UpdatedItemsJob>(opts =>
+            {
+                opts.WithIdentity(UpdatedItemsJob.Key)
+                    .DisallowConcurrentExecution();
+            });
+            q.AddTrigger(opts =>
+            {
+                opts.ForJob(UpdatedItemsJob.Key)
+                    .WithIdentity(UpdatedItemsJob.Key.ToString())
+                    .StartNow()
+                    .WithSimpleSchedule(sb => sb.WithIntervalInMinutes(delay));
+            });
+
+            delay = builder.Configuration.GetValue("JobSchedules:Lists", 1);
+
+            q.AddJob<GetListsJob>(opts =>
+            {
+                opts.WithIdentity(GetListsJob.Key)
+                    .DisallowConcurrentExecution();
+            });
+            q.AddTrigger(opts =>
+            {
+                opts.ForJob(GetListsJob.Key)
+                    .WithIdentity(GetListsJob.Key.ToString())
+                    .StartNow()
+                    .WithSimpleSchedule(sb => sb.WithIntervalInMinutes(delay));
+            });
+        });
+
+        builder.Services.AddQuartzHostedService(q =>
+        {
+            q.WaitForJobsToComplete = true;
+            q.AwaitApplicationStarted = true;
+        });
 
         // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
         builder.Services.AddOpenApi();
 
-        builder.Services.AddRefitClient<Services.IHackerNewsApi>()
+        var refitSettings = new RefitSettings()
+        {
+            ContentSerializer = new SystemTextJsonContentSerializer(jsonSerializerOptions),            
+        };
+        builder.Services.AddRefitClient<IHackerNewsApi>(refitSettings)
             .ConfigureHttpClient(c => c.BaseAddress = new("https://hacker-news.firebaseio.com"));
 
-        builder.Services.AddControllers();
+        builder.Services.AddControllers()
+            .AddJsonOptions(config =>
+            {
+                config.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+                config.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+                config.JsonSerializerOptions.AllowOutOfOrderMetadataProperties = true;
+                config.JsonSerializerOptions.NumberHandling = JsonNumberHandling.AllowReadingFromString;
+                config.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+            });
 
         var app = builder.Build();
 
@@ -53,31 +116,10 @@ public static class Program
             app.MapScalarApiReference();
         }
 
-        string[] summaries = ["Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"];
-
-        app.MapGet("/weatherforecast", () =>
-            {
-                var forecast = Enumerable.Range(1, 5).Select(index =>
-                        new WeatherForecast
-                        (
-                            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-                            Random.Shared.Next(-20, 55),
-                            summaries[Random.Shared.Next(summaries.Length)]
-                        ))
-                    .ToArray();
-                return forecast;
-            })
-            .WithName("GetWeatherForecast");
-        
         app.MapControllers();
-        
+
         app.MapDefaultEndpoints();
 
         app.Run();
     }
-}
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
 }

@@ -20,6 +20,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "CommonLibraries", "CommonLi
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HackerNewsModels", "CommonLibraries\HackerNewsModels\HackerNewsModels.csproj", "{15F00EEA-3C99-49F1-AA21-6CC9695B35E7}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Common.Utility", "CommonLibraries\Common.Utility\Common.Utility.csproj", "{7564C752-B0F7-4D82-90D1-C26FECAB023E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -56,6 +58,10 @@ Global
 		{15F00EEA-3C99-49F1-AA21-6CC9695B35E7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{15F00EEA-3C99-49F1-AA21-6CC9695B35E7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{15F00EEA-3C99-49F1-AA21-6CC9695B35E7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7564C752-B0F7-4D82-90D1-C26FECAB023E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7564C752-B0F7-4D82-90D1-C26FECAB023E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7564C752-B0F7-4D82-90D1-C26FECAB023E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7564C752-B0F7-4D82-90D1-C26FECAB023E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -63,6 +69,7 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{01944586-FF0D-6A61-424B-AE7280A00DFA} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 		{15F00EEA-3C99-49F1-AA21-6CC9695B35E7} = {FB442BBB-B473-429C-8B26-A5FFD8D54FDE}
+		{7564C752-B0F7-4D82-90D1-C26FECAB023E} = {FB442BBB-B473-429C-8B26-A5FFD8D54FDE}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {BD81DA0D-F593-4955-AC6C-1DAD996A9F18}
