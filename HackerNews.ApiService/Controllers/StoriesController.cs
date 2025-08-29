@@ -25,13 +25,19 @@ public class StoriesController : ControllerBase
     {
         return this._service.GetAsync(id);
     }
-    
-    [HttpGet("latest/{category}")]
-    public Task<IEnumerable<Story>> LatestAsync(IHackerNewsService.StoryCategory category, int page = 0, int pageSize = 10)
+
+    [HttpGet("latestStories/{category}")]
+    public Task<IEnumerable<Story>> LatestStoriesAsync(IHackerNewsService.StoryCategory category, int page = 0, int pageSize = 10, CancellationToken cancellationToken = default)
     {
-        return this._service.LatestAsync(category, page, pageSize);
+        return this._service.LatestStoriesAsync(category, page, pageSize, cancellationToken);
     }
-    
+
+    [HttpGet("latest/{category}")]
+    public Task<long[]> LatestIdsAsync(IHackerNewsService.StoryCategory category, CancellationToken cancellationToken = default)
+    {
+        return this._service.LatestIdsAsync(category, cancellationToken);
+    }
+
     [HttpGet("find")]
     public Task<IEnumerable<Story>> FindAsync(string search, int page = 1, int pageSize = 10)
     {

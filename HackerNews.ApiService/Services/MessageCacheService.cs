@@ -1,9 +1,6 @@
-﻿using System.Text;
-using System.Text.Json;
+﻿using HackerNewsModels;
 
-using HackerNewsModels;
-
-using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 
 namespace HackerNews.ApiService.Services;
@@ -13,43 +10,67 @@ namespace HackerNews.ApiService.Services;
 /// </summary>
 public class MessageCacheService
 {
-    private readonly IDistributedCache _cache;
+    private readonly IMemoryCache _cache;
     private readonly IHackerNewsApi _hackerNewsApi;
+    private readonly LoadedStories _loadedStories;
     private MessageCacheServiceOptions _options;
-    private readonly JsonSerializerOptions _jsonOptions;
 
-    public MessageCacheService(IDistributedCache cache, IHackerNewsApi hackerNewsApi, IOptionsMonitor<MessageCacheServiceOptions> options, JsonSerializerOptions jsonOptions)
+    public MessageCacheService(IMemoryCache cache,
+        IHackerNewsApi hackerNewsApi,
+        IOptionsMonitor<MessageCacheServiceOptions> options,
+        LoadedStories loadedStories)
     {
         this._cache = cache;
         this._hackerNewsApi = hackerNewsApi;
         this._options = options.CurrentValue;
-        this._jsonOptions = jsonOptions;
-        options.OnChange(newOptions => this._options = newOptions);
+        this._loadedStories = loadedStories;
+
+        options.OnChange(newOptions =>
+        {
+            this._options = newOptions;
+        });
     }
 
     public async Task<Story?> GetStoryAsync(long id, CancellationToken cancellationToken)
     {
         var key = $"story-{id}";
-        
-        var storyString = await this._cache.GetStringAsync(key, cancellationToken)
-            ?? await LoadStoryStringAsync(key, id, cancellationToken);
-
-        return JsonSerializer.Deserialize<Story>(storyString ?? string.Empty, this._jsonOptions);
+        var story = await this._cache.GetOrCreateAsync(key, async entry =>
+        {
+            return AddStoryInternal(entry, id, await this._hackerNewsApi.GetStoryAsync(id, cancellationToken));
+        });
+        return story;
     }
 
-    private async Task<string?> LoadStoryStringAsync(string key, long id, CancellationToken cancellationToken)
+    public async Task<long[]> GetLiveStoryIdsAsync(IHackerNewsService.StoryCategory category, CancellationToken cancellationToken)
     {
-        var item = await this._hackerNewsApi.GetStoryAsync(id, cancellationToken);
-
-        if (item is not null)
+        return await this._cache.GetOrCreateAsync($"live-{category}", async entry =>
         {
-            var options = new DistributedCacheEntryOptions()
-            {
-                AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(this._options.CacheExpirationHours),
-            };
-            await this._cache.SetAsync(key, Encoding.UTF8.GetBytes(item), options, cancellationToken);
-        }
+            entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(this._options.LiveStoryExpirationMinutes);
+            return await this._hackerNewsApi.GetLiveStoryIdsAsync(category.ToString().ToLower(), cancellationToken);
+        }) ?? Array.Empty<long>();
+    }
 
-        return item;
+    public void AddStory(Story story)
+    {
+        AddStoryInternal(this._cache.CreateEntry($"story-{story.Id}"), story.Id, story);
+    }
+
+    private Story? AddStoryInternal(ICacheEntry entry, long id, Story? story)
+    {
+        entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(this._options.CacheExpirationHours);
+        entry.RegisterPostEvictionCallback(EjectingItem, id);
+        if (story is not null)
+        {
+            this._loadedStories.Add(id);
+        }
+        return story;
+    }
+
+    private void EjectingItem(object key, object? value, EvictionReason reason, object? state)
+    {
+        if (state is int id)
+        {
+            this._loadedStories.Remove(id);
+        }
     }
 }

@@ -1,7 +1,5 @@
 ﻿using HackerNewsModels;
 
-using Microsoft.Extensions.Caching.Distributed;
-
 namespace HackerNews.ApiService.Services;
 
 public class HackerNewsService : IHackerNewsService
@@ -20,7 +18,13 @@ public class HackerNewsService : IHackerNewsService
     }
 
     /// <inheritdoc />
-    public Task<IEnumerable<Story>> LatestAsync(IHackerNewsService.StoryCategory category, int page = 0, int pageSize = 10, CancellationToken cancellationToken = default) => throw new NotImplementedException();
+    public Task<IEnumerable<Story>> LatestStoriesAsync(IHackerNewsService.StoryCategory category, int page = 0, int pageSize = 10, CancellationToken cancellationToken = default) => throw new NotImplementedException();
+
+    /// <inheritdoc />
+    public Task<long[]> LatestIdsAsync(IHackerNewsService.StoryCategory category, CancellationToken cancellationToken)
+    {
+        return this._messageCache.GetLiveStoryIdsAsync(category, cancellationToken);
+    }
 
     /// <inheritdoc />
     public Task<IEnumerable<Story>> FindAsync(string search, int page = 1, int pageSize = 10, CancellationToken cancellationToken = default) => throw new NotImplementedException();

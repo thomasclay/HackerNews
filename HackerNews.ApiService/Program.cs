@@ -7,6 +7,8 @@ using Scalar.AspNetCore;
 using HackerNewsModels;
 
 using HackerNews.ApiService.Services;
+using Quartz;
+using HackerNews.ApiService.Jobs;
 
 namespace HackerNews.ApiService;
 
@@ -19,9 +21,12 @@ public static class Program
 
         // Add service defaults & Aspire client integrations.
         builder.AddServiceDefaults();
-        builder.Services.AddDistributedMemoryCache();
+
+        builder.Services.AddMemoryCache();
 
         builder.Services.AddSingleton<MessageCacheService>();
+        builder.Services.AddSingleton<LoadedStories>();
+
         builder.Services.AddScoped<IHackerNewsService, HackerNewsService>();
         builder.Services.Configure<MessageCacheServiceOptions>(cacheOptions =>
         {
@@ -30,9 +35,17 @@ public static class Program
                 cacheOptions.CacheExpirationHours = hours;
             }
         });
-        
+
         // Add services to the container.
         builder.Services.AddProblemDetails();
+
+        // Quartz!
+        builder.Services.AddQuartz(q =>
+        {
+            AddStoriesJobs(q, builder.Configuration.GetSection("JobSchedules"));
+        });
+
+        builder.Services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);
 
         // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
         builder.Services.AddOpenApi();
@@ -53,31 +66,38 @@ public static class Program
             app.MapScalarApiReference();
         }
 
-        string[] summaries = ["Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"];
-
-        app.MapGet("/weatherforecast", () =>
-            {
-                var forecast = Enumerable.Range(1, 5).Select(index =>
-                        new WeatherForecast
-                        (
-                            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-                            Random.Shared.Next(-20, 55),
-                            summaries[Random.Shared.Next(summaries.Length)]
-                        ))
-                    .ToArray();
-                return forecast;
-            })
-            .WithName("GetWeatherForecast");
-        
         app.MapControllers();
-        
+
         app.MapDefaultEndpoints();
 
         app.Run();
     }
-}
 
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
+    static void AddStoriesJobs(IServiceCollectionQuartzConfigurator q, IConfigurationSection configuration)
+    {
+        foreach (var category in Enum.GetValues<IHackerNewsService.StoryCategory>())
+        {
+            var delay = configuration.GetValue(category.ToString(), 5);
+
+            var dataMap = new JobDataMap()
+            {
+                { nameof(category), category }
+            };
+
+            var jobKey = new JobKey(category.ToString(), "GetStories");
+            q.AddJob<GetStories>(opts =>
+            {
+                opts.WithIdentity(jobKey)
+                    .SetJobData(dataMap)
+                    .DisallowConcurrentExecution();
+            });
+            q.AddTrigger(opts =>
+            {
+                opts.ForJob(jobKey)
+                    .WithIdentity(jobKey.ToString())
+                    .StartNow()
+                    .WithSimpleSchedule(sb => sb.WithIntervalInMinutes(delay));
+            });
+        }
+    }
 }

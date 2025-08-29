@@ -21,7 +21,7 @@ public interface IHackerNewsService
         /// <summary>
         /// Newest stories
         /// </summary>
-        Newest,
+        New,
         
         /// <summary>
         /// Top stories
@@ -42,8 +42,16 @@ public interface IHackerNewsService
     /// <param name="pageSize"></param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>List of stories.</returns>
-    public Task<IEnumerable<Story>> LatestAsync(StoryCategory category, int page = 0, int pageSize = 10,
+    public Task<IEnumerable<Story>> LatestStoriesAsync(StoryCategory category, int page = 0, int pageSize = 10,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Retrieves the newest stories, paged.
+    /// </summary>
+    /// <param name="category">Story category</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>List of story ids.</returns>
+    public Task<long[]> LatestIdsAsync(StoryCategory category, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Attempts to find stories with matching text in the title.

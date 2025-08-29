@@ -12,7 +12,7 @@ public static class Program
         var builder = DistributedApplication.CreateBuilder(args);
 
         var cacheLifetime = builder.AddParameter(Names.CacheEntryLifeInHours);
-        
+
         // some issues with garnet and Lua support
         //var cache = builder.AddGarnet(Names.Cache)
         //    .WithArgs("--lua", "--lua-transaction-mode");
