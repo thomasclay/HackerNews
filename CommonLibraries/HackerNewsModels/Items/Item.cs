@@ -30,8 +30,7 @@ public class Item
     /// Timestamp of story creation
     /// </summary>
     [JsonPropertyName("time")]
-    [JsonConverter(typeof(UnixDateTimeJsonConverter))]
-    public required DateTimeOffset Time { get; init; }
+    public required long UnixTime { get; init; }
 
     [JsonExtensionData()]
     public Dictionary<string, JsonElement>? ExtensionData { get; set; }

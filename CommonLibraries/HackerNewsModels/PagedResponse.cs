@@ -14,12 +14,12 @@ public class PagedResponse<T>
     /// <summary>
     /// Requested page number (starting with 0)
     /// </summary>
-    public required int Page { get; init; }
+    public int Page { get; init => field = Math.Max(0, value); } = 0;
 
     /// <summary>
-    /// Requested page size
+    /// Requested page size - ranges from 5 to 50.
     /// </summary>
-    public required int Size { get; init; }
+    public required int Size { get; init => field = Math.Clamp(value, 5, 50); }
 
     /// <summary>
     /// Returned items.

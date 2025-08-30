@@ -5,6 +5,9 @@ using Refit;
 
 namespace HackerNews.ApiService.Services;
 
+/// <summary>
+/// API for remote endpoint for HackerNews
+/// </summary>
 public interface IHackerNewsApi
 {
     /// <summary>

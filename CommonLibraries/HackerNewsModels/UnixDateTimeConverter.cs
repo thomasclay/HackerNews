@@ -3,17 +3,23 @@ using System.Text.Json.Serialization;
 
 namespace HackerNewsModels;
 
-
-public class UnixDateTimeJsonConverter : JsonConverter<DateTimeOffset>
+/// <summary>
+/// User to convert Unix time to and from DateTime.
+/// </summary>
+public class UnixDateTimeJsonConverter : JsonConverter<DateTime>
 {
-    public override DateTimeOffset Read(
+    public override DateTime Read(
         ref Utf8JsonReader reader,
         Type typeToConvert,
-        JsonSerializerOptions options) => DateTimeOffset.FromUnixTimeSeconds(reader.GetInt64());
+        JsonSerializerOptions options)
+    {
+        var a = reader.GetString();
+        return DateTimeOffset.FromUnixTimeSeconds(reader.GetInt64()).UtcDateTime;
+    }
 
     public override void Write(
         Utf8JsonWriter writer,
-        DateTimeOffset dateTimeValue,
+        DateTime dateTimeValue,
         JsonSerializerOptions options) =>
-            writer.WriteStringValue(dateTimeValue.ToUnixTimeSeconds().ToString());
+            writer.WriteStringValue(new DateTimeOffset(dateTimeValue).ToUnixTimeSeconds().ToString());
 }

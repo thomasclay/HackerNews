@@ -6,6 +6,7 @@ namespace HackerNewsModels;
 /// For retrieving hacker news information
 /// </summary>
 public interface IHackerNewsService
+
 {
     /// <summary>
     /// Attempts to get the item with the given id
@@ -22,18 +23,25 @@ public interface IHackerNewsService
     /// <param name="page">Page number (0 indexed)</param>
     /// <param name="pageSize">Page size, 1-100</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>Paged response of newest stories.</returns>
+    /// <returns>Paged response of stories by category.</returns>
     public Task<PagedResponse<Story>> GetStoriesAsync(StoryCategory category, int page, int pageSize,
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Attempts to find the first 10 items with 
-    /// matching text in the title.
+    /// Attempts to find the first 10 stories with matching text in the title. Case insensitive.
     /// </summary>
     /// <param name="category">Story category (newest, best, top)</param>
     /// <param name="searchText">Search string</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>Any stories where the title matches</returns>
-    public Task<IEnumerable<Story>> FindAsync(StoryCategory category, string searchText,
+    /// <returns>Any stories where the title contains the searchText</returns>
+    public Task<IEnumerable<Story>> FindStory(StoryCategory category, string searchText,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Removes items with the given ids from the cache.
+    /// </summary>
+    /// <param name="ids">Story identifiers to remove</param>
+    /// <param name="cancellationToken">Cancellation</param>
+    /// <returns>Async task</returns>
+    public Task RemoveItemsAsync(IEnumerable<long> ids, CancellationToken cancellationToken = default);
 }

@@ -7,17 +7,23 @@ using Refit;
 using Scalar.AspNetCore;
 
 using Common.Utility;
+using HackerNewsModels;
 
 using HackerNews.ApiService.Jobs;
 using HackerNews.ApiService.Services;
 
-using HackerNewsModels;
-
 namespace HackerNews.ApiService;
 
+/// <summary>
+/// Main program
+/// </summary>
 [ExcludeFromCodeCoverage()]
 public static class Program
 {
+    /// <summary>
+    /// Program entry point
+    /// </summary>
+    /// <param name="args">command line arguments</param>
     public static void Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);

@@ -1,22 +1,23 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
-  <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-  </PropertyGroup>
+	<PropertyGroup>
+		<TargetFramework>net9.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<LangVersion>preview</LangVersion>
+	</PropertyGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\CommonLibraries\Common.Utility\Common.Utility.csproj" />
-    <ProjectReference Include="..\CommonLibraries\HackerNewsModels\HackerNewsModels.csproj" />
-    <ProjectReference Include="..\HackerNews.ServiceDefaults\HackerNews.ServiceDefaults.csproj" />
-  </ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\CommonLibraries\Common.Utility\Common.Utility.csproj" />
+		<ProjectReference Include="..\CommonLibraries\HackerNewsModels\HackerNewsModels.csproj" />
+		<ProjectReference Include="..\HackerNews.ServiceDefaults\HackerNews.ServiceDefaults.csproj" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.8" />
-    <PackageReference Include="Quartz.AspNetCore" Version="3.15.0" />
-    <PackageReference Include="Refit.HttpClientFactory" Version="8.0.0" />
-    <PackageReference Include="Scalar.AspNetCore" Version="2.7.2" />
-  </ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.8" />
+		<PackageReference Include="Quartz.AspNetCore" Version="3.15.0" />
+		<PackageReference Include="Refit.HttpClientFactory" Version="8.0.0" />
+		<PackageReference Include="Scalar.AspNetCore.Microsoft" Version="2.7.2" />
+	</ItemGroup>
 
 </Project>

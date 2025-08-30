@@ -1,0 +1,11 @@
+﻿@HackerNews.ApiService_HostAddress = https://localhost:7515
+
+@id=8863
+GET {{HackerNews.ApiService_HostAddress}}/api/stories/story/{{id}}
+
+###
+
+@id=9924
+GET {{HackerNews.ApiService_HostAddress}}/api/items/{{id}}
+
+###
