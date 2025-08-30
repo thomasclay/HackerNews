@@ -48,8 +48,8 @@ public class MessageCacheService
             {
                 AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(this._options.ExpirationInHours)
             };
-            var serializedItem = JsonSerializer.Serialize(readItem.Content, this._jsonSerializerOptions);
-            await this._cache.SetStringAsync(key, serializedItem, options, cancellationToken);
+            var serializedItem = JsonSerializer.SerializeToUtf8Bytes(readItem.Content, this._jsonSerializerOptions);
+            await this._cache.SetAsync(key, serializedItem, options, cancellationToken);
             return readItem.Content;
         }
         return JsonSerializer.Deserialize<Item>(itemBytes, this._jsonSerializerOptions);
