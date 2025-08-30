@@ -13,24 +13,22 @@ public static class Program
 
         // some issues with garnet and Lua support
         //var cache = builder.AddGarnet(Names.Cache)
-        //    .WithArgs("--lua", "--lua-transaction-mode");
-        var apiService = builder.AddProject<Projects.HackerNews_ApiService>(Names.ApiService)
-            //.WithReference(cache)
-            //.WaitFor(cache)
-            //.WithUrl("/scalar/v1", "Scalar")
-            .WithHttpHealthCheck("/health");
+        //.WithArgs("--lua", "--lua-transaction-mode");
 
-        //apiService.WithUrl(apiService.GetEndpoint("http") + "/scalar/v1", "Scalar");
-        //apiService.WithUrlForEndpoint("http", url => url.Url += "/scalar/v1");
-        apiService.WithUrlForEndpoint("http", reference =>
-        {
-            var result = new ResourceUrlAnnotation()
-            {
-                Url = reference.Url + "/scalar/v1",
-                DisplayText = "Scalar"
-            };
-            return result;
-        });
+        var cache = builder.AddRedis(Names.Cache)
+            .WithRedisInsight()
+            .WithRedisCommander();
+
+        var apiService = builder.AddProject<Projects.HackerNews_ApiService>(Names.ApiService)
+            .WithReference(cache)
+            .WaitFor(cache)
+            .WithHttpHealthCheck("/health")
+            .WithUrlForEndpoint("http", reference =>
+                new ResourceUrlAnnotation()
+                {
+                    Url = reference.Url + "/scalar/v1",
+                    DisplayText = "Scalar"
+                });
 
         builder.AddProject<Projects.HackerNews_Web>(Names.BlazorFrontEnd)
             .WithExternalHttpEndpoints()

@@ -1,16 +1,21 @@
-using System.Diagnostics.CodeAnalysis;
-using System.Text.Json;
-using System.Text.Json.Serialization;
-
-using Quartz;
-using Refit;
-using Scalar.AspNetCore;
-
 using Common.Utility;
-using HackerNewsModels;
 
 using HackerNews.ApiService.Jobs;
 using HackerNews.ApiService.Services;
+
+using HackerNewsModels;
+
+using Quartz;
+
+using Refit;
+
+using Scalar.AspNetCore;
+
+using StackExchange.Redis;
+
+using System.Diagnostics.CodeAnalysis;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace HackerNews.ApiService;
 
@@ -32,7 +37,8 @@ public static class Program
         builder.AddServiceDefaults();
         builder.Services.AddSingleton<FactoryService>();
 
-        builder.Services.AddDistributedMemoryCache();
+        builder.AddRedisDistributedCache(Names.Cache);
+
         var jsonSerializerOptions = new JsonSerializerOptions(JsonSerializerDefaults.General)
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
