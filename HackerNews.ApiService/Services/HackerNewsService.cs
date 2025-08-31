@@ -12,9 +12,10 @@ public class HackerNewsService(MessageCacheService messageCache) : IHackerNewsSe
     private readonly MessageCacheService _messageCache = messageCache;
 
     /// <inheritdoc />
-    public Task<Item?> GetItemAsync(long id, CancellationToken cancellationToken = default)
+    public async Task<Item?> GetItemAsync(long id, CancellationToken cancellationToken = default)
     {
-        return this._messageCache.GetItemAsync(id, cancellationToken);
+        var result = await this._messageCache.GetItemAsync(id, cancellationToken);
+        return result.Item;
     }
 
     /// <inheritdoc />
@@ -26,6 +27,6 @@ public class HackerNewsService(MessageCacheService messageCache) : IHackerNewsSe
     /// <inheritdoc />
     public Task RemoveItemsAsync(IEnumerable<long> ids, CancellationToken cancellationToken = default)
     {
-        return this._messageCache.RemoveItemsAsync(ids, cancellationToken);
+        return this._messageCache.RemoveItemsAsync(ids, cancellationToken).AsTask();
     }
 }

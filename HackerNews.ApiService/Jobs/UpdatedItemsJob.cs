@@ -21,6 +21,8 @@ public class UpdatedItemsJob(IHackerNewsApi newsApi, MessageCacheService cache, 
     /// <inheritdoc />
     public async Task Execute(IJobExecutionContext context)
     {
+        ServiceMetrics.ChangeUpdateCounter.Add(1);
+
         var changedItems = await this._newsApi.GetUpdatesAsync(context.CancellationToken);
         if (!changedItems.IsSuccessful)
         {

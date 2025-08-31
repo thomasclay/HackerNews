@@ -34,10 +34,14 @@ public static class Program
         var builder = WebApplication.CreateBuilder(args);
 
         // Add service defaults & Aspire client integrations.
-        builder.AddServiceDefaults();
+        builder.AddServiceDefaults(mb =>
+        { 
+            mb.AddMeter(ServiceMetrics.ServiceMeter.Name);
+        });
         builder.Services.AddSingleton<FactoryService>();
 
         builder.AddRedisDistributedCache(Names.Cache);
+        builder.Services.AddHybridCache();
 
         var jsonSerializerOptions = new JsonSerializerOptions(JsonSerializerDefaults.General)
         {
@@ -60,7 +64,7 @@ public static class Program
         // Quartz!
         builder.Services.AddQuartz(q =>
         {
-            var delay = builder.Configuration.GetValue("JobSchedules:Updates", 1);
+            var delay = builder.Configuration.GetValue("JobSchedules:Updates", 1d);
 
             q.AddJob<UpdatedItemsJob>(opts =>
             {
@@ -72,10 +76,12 @@ public static class Program
                 opts.ForJob(UpdatedItemsJob.Key)
                     .WithIdentity(UpdatedItemsJob.Key.ToString())
                     .StartNow()
-                    .WithSimpleSchedule(sb => sb.WithIntervalInMinutes(delay));
+                    .WithSimpleSchedule(sb => sb
+                        .WithInterval(TimeSpan.FromMinutes(delay))
+                        .RepeatForever());
             });
 
-            delay = builder.Configuration.GetValue("JobSchedules:Lists", 1);
+            delay = builder.Configuration.GetValue("JobSchedules:Lists", 1d);
 
             q.AddJob<GetListsJob>(opts =>
             {
@@ -87,7 +93,9 @@ public static class Program
                 opts.ForJob(GetListsJob.Key)
                     .WithIdentity(GetListsJob.Key.ToString())
                     .StartNow()
-                    .WithSimpleSchedule(sb => sb.WithIntervalInMinutes(delay));
+                    .WithSimpleSchedule(sb => sb
+                        .WithInterval(TimeSpan.FromMinutes(delay))
+                        .RepeatForever());
             });
         });
 
@@ -130,7 +138,7 @@ public static class Program
 
         app.MapControllers();
 
-        app.MapDefaultEndpoints();
+        app.MapDefaultEndpoints(); 
 
         app.Run();
     }

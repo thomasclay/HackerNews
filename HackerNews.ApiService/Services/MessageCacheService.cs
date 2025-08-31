@@ -1,32 +1,33 @@
-﻿using HackerNewsModels;
-using HackerNewsModels.Items;
-
-using Microsoft.Extensions.Caching.Distributed;
-using Microsoft.Extensions.Options;
-
+﻿using System.Diagnostics;
 using System.Text.Json;
 
-namespace HackerNews.ApiService.Services;
+using HackerNewsModels;
+using HackerNewsModels.Items;
 
+using Microsoft.Extensions.Caching.Hybrid;
+using Microsoft.Extensions.Options;
+
+namespace HackerNews.ApiService.Services;
 /// <summary>
 /// Service to cache messages - meant to be a singleton.
 /// </summary>
 public class MessageCacheService
 {
-    private readonly IDistributedCache _cache;
-    private readonly IHackerNewsApi _hackerNewsApi;
-    private readonly JsonSerializerOptions _jsonSerializerOptions;
-    private MessageCacheServiceOptions _options;
-
     /// <summary>
     /// Key prefix for item cache entries.
     /// </summary>
-    public const string ItemCacheKeyPrefix = "item-";
+    public const string ItemCacheKeyPrefix = "item/";
 
     /// <summary>
     /// Key prefix for list cache entries.
     /// </summary>
-    public const string ListCacheKeyPrefix = "list-";
+    public const string ListCacheKeyPrefix = "list/";
+
+    private readonly HybridCache _cache;
+    private readonly IHackerNewsApi _hackerNewsApi;
+    private readonly JsonSerializerOptions _jsonSerializerOptions;
+    private readonly ILogger<MessageCacheService> _logger;
+    private MessageCacheServiceOptions _options;
 
     /// <summary>
     /// Cache service constructor
@@ -35,65 +36,19 @@ public class MessageCacheService
     /// <param name="hackerNewsApi">Refit client to access HackerNews</param>
     /// <param name="jsonSerializerOptions">For serializing</param>
     /// <param name="options">Service options</param>
-    public MessageCacheService(IDistributedCache cache,
+    public MessageCacheService(HybridCache cache,
         IHackerNewsApi hackerNewsApi,
         JsonSerializerOptions jsonSerializerOptions,
-        IOptionsMonitor<MessageCacheServiceOptions> options)
+        IOptionsMonitor<MessageCacheServiceOptions> options,
+        ILogger<MessageCacheService> logger)
     {
         this._cache = cache;
         this._hackerNewsApi = hackerNewsApi;
         this._jsonSerializerOptions = jsonSerializerOptions;
         this._options = options.CurrentValue;
+        this._logger = logger;
 
-        options.OnChange(newOptions =>
-        {
-            this._options = newOptions;
-        });
-    }
-
-    /// <summary>
-    /// Retrieves a single item
-    /// </summary>
-    /// <param name="id">Item ID to retrieve</param>
-    /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>The item, or null if it doesn't exist.</returns>
-    public async Task<Item?> GetItemAsync(long id, CancellationToken cancellationToken)
-    {
-        var key = ItemCacheKeyPrefix + id.ToString();
-        var itemBytes = await this._cache.GetAsync(key, cancellationToken);
-        if (itemBytes is null)
-        {
-            var readItem = await this._hackerNewsApi.GetItemAsync(id, cancellationToken);
-            if (!readItem.IsSuccessful)
-            {
-                return null;
-            }
-            var options = new DistributedCacheEntryOptions
-            {
-                AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(this._options.ExpirationInHours)
-            };
-            var serializedItem = JsonSerializer.SerializeToUtf8Bytes(readItem.Content, this._jsonSerializerOptions);
-            await this._cache.SetAsync(key, serializedItem, options, cancellationToken);
-            return readItem.Content;
-        }
-        return JsonSerializer.Deserialize<Item>(itemBytes, this._jsonSerializerOptions);
-    }
-
-    /// <summary>
-    /// Removes items from the cache.
-    /// </summary>
-    /// <param name="ids">Item identifiers to remove</param>
-    /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>Async task</returns>
-    public async Task RemoveItemsAsync(IEnumerable<long> ids, CancellationToken cancellationToken = default)
-    {
-        var tasks = new List<Task>();
-        foreach (var id in ids)
-        {
-            var key = ItemCacheKeyPrefix + id.ToString();
-            tasks.Add(this._cache.RemoveAsync(key, cancellationToken));
-        }
-        await Task.WhenAll(tasks);
+        options.OnChange(newOptions => this._options = newOptions);
     }
 
     /// <summary>
@@ -103,14 +58,86 @@ public class MessageCacheService
     /// <param name="content">Items to add/update</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Async task</returns>
-    public Task AddOrUpdateListAsync(StoryCategory storyCategory, long[] content, CancellationToken cancellationToken)
+    public ValueTask AddOrUpdateListAsync(StoryCategory storyCategory, long[] content, CancellationToken cancellationToken)
     {
         var serialized = JsonSerializer.SerializeToUtf8Bytes(content, this._jsonSerializerOptions);
 
         return this._cache.SetAsync(
-            ListCacheKeyPrefix + storyCategory.ToString(),
+            $"{ListCacheKeyPrefix}{storyCategory}",
             serialized,
-            cancellationToken);
+            CreateCacheOptions(),
+            cancellationToken: cancellationToken);
     }
 
+    /// <summary>
+    /// Retrieves a single item
+    /// </summary>
+    /// <param name="id">Item ID to retrieve</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Flag indicating if the item was read from the cache, and the item, or null if it doesn't exist.</returns>
+    public async Task<(bool FromCache, Item? Item)> GetItemAsync(long id, CancellationToken cancellationToken)
+    {
+        var state = new ReadState(id, $"{ItemCacheKeyPrefix}{id}",
+            CreateCacheOptions());
+
+        var item = await this._cache.GetOrCreateAsync(
+            state.Key,
+            state,
+            ReadFromSource,
+            state.Options,
+            null,
+            cancellationToken: cancellationToken);
+
+        if (state.FromCache)
+        {
+            ServiceMetrics.ItemCacheHitCounter.Add(1);
+        }
+        else
+        {
+            ServiceMetrics.ItemCacheMissCounter.Add(1);
+        }
+        return (state.FromCache, item);
+    }
+
+    /// <summary>
+    /// Removes items from the cache.
+    /// </summary>
+    /// <param name="ids">Item identifiers to remove</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Async task</returns>
+    public ValueTask RemoveItemsAsync(IEnumerable<long> ids, CancellationToken cancellationToken = default)
+    {
+        return this._cache.RemoveAsync(ids.Select(id => $"{ItemCacheKeyPrefix}{id}"), cancellationToken);
+    }
+
+    private HybridCacheEntryOptions CreateCacheOptions()
+    {
+        return new()
+        {
+            Expiration = TimeSpan.FromHours(this._options.ExpirationInHours),
+        };
+    }
+
+    private async ValueTask<Item?> ReadFromSource(ReadState state, CancellationToken cancellationToken)
+    {
+        state.FromCache = false;
+        var readItem = await this._hackerNewsApi.GetItemAsync(state.Id, cancellationToken);
+
+        if (!readItem.IsSuccessful)
+        {
+            ServiceMetrics.ReadItemFailCounter.Add(1);
+            this._logger.LogError(readItem.Error.InnerException,
+                "Error retrieving item {Id} from source: {Status} {Error}", state.Id, readItem.StatusCode, readItem.Error);
+            return null;
+        }
+        return readItem.Content;
+    }
+
+    private class ReadState(long id, string key, HybridCacheEntryOptions options)
+    {
+        public bool FromCache { get; set; } = true;
+        public long Id { get; } = id;
+        public string Key { get; } = key;
+        public HybridCacheEntryOptions Options { get; } = options;
+    }
 }

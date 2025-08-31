@@ -8,7 +8,11 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+		<PackageReference Include="Aspire.StackExchange.Redis.DistributedCaching" Version="9.4.1" />
+		<PackageReference Include="Microsoft.Extensions.Caching.Hybrid" Version="9.8.0" />
+		<PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="9.0.8" />
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.8" />
+		<PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.8" />
 	</ItemGroup>
 
 </Project>

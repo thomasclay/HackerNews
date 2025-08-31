@@ -23,6 +23,8 @@ public class GetListsJob(IHackerNewsApi newsApi, MessageCacheService cache, ILog
     /// <inheritdoc />
     public async Task Execute(IJobExecutionContext context)
     {
+        ServiceMetrics.ListUpdateCounter.Add(1);
+
         var categoryTasks = new Dictionary<StoryCategory, Task<Refit.ApiResponse<long[]>>>()
         {
             [StoryCategory.Top] = this._newsApi.GetTopItemIdentifierAsync(context.CancellationToken),
@@ -42,7 +44,7 @@ public class GetListsJob(IHackerNewsApi newsApi, MessageCacheService cache, ILog
                     apiResult.Result.Error);
                 continue;
             }
-            tasks.Add(_cache.AddOrUpdateListAsync(category, apiResult.Result.Content, context.CancellationToken));
+            tasks.Add(this._cache.AddOrUpdateListAsync(category, apiResult.Result.Content, context.CancellationToken).AsTask());
         }
         await Task.WhenAll(tasks);
     }
