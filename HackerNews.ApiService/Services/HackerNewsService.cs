@@ -25,7 +25,7 @@ public class HackerNewsService(MessageCacheService messageCache) : IHackerNewsSe
         {
             Page = page,
             PageSize = pageSize,
-            Items = await this._messageCache.GetItemsAsync(category, page, pageSize, cancellationToken),
+            Items = await this._messageCache.GetStoriesAsync(category, page, pageSize, cancellationToken),
         };
     }
 

@@ -99,22 +99,38 @@ public class MessageCacheService
     }
 
     /// <summary>
-    /// Retrieves a single item
+    /// Retrieves a page of stories
     /// </summary>
-    /// <param name="id">Item ID to retrieve</param>
+    /// <param name="category">Category of stories to retrieve</param>
+    /// <param name="page">Page number to retrieve</param>
+    /// <param name="pageSize">Number of items per page</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Flag indicating if the item was read from the cache, and the item, or null if it doesn't exist.</returns>
-    public async Task<IEnumerable<Story>> GetItemsAsync(StoryCategory category, int page, int pageSize, CancellationToken cancellationToken)
+    public async Task<IEnumerable<Story>> GetStoriesAsync(StoryCategory category, int page, int pageSize, CancellationToken cancellationToken)
     {
         var list = await GetStoryListAsync(category, cancellationToken);
+        var items = await GetItemsAsync(list.Skip(page * pageSize).Take(pageSize), cancellationToken);
+        return items.OfType<Story>();
+    }
+
+    /// <summary>
+    /// Retrieves a page of stories
+    /// </summary>
+    /// <param name="category">Category of stories to retrieve</param>
+    /// <param name="page">Page number to retrieve</param>
+    /// <param name="pageSize">Number of items per page</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Flag indicating if the item was read from the cache, and the item, or null if it doesn't exist.</returns>
+    public async Task<IEnumerable<Item>> GetItemsAsync(IEnumerable<long> itemIdentifiers, CancellationToken cancellationToken)
+    {
         var items = new List<Task<(bool FromCache, Item? Item)>>();
-        foreach (var id in list.Skip(page * pageSize).Take(pageSize))
+        foreach (var id in itemIdentifiers)
         {
             items.Add(GetItemAsync(id, cancellationToken));
         }
         var results = await Task.WhenAll(items);
 
-        return results.Where(r => r.Item is Story).Select(r => (Story)r.Item!);
+        return results.Where(r => r.Item is not null).Select(r => r.Item!);
     }
 
     public Task<IEnumerable<long>> GetStoryListAsync(StoryCategory storyCategory, CancellationToken cancellationToken)
