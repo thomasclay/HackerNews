@@ -19,7 +19,15 @@ public class HackerNewsService(MessageCacheService messageCache) : IHackerNewsSe
     }
 
     /// <inheritdoc />
-    public Task<PagedResponse<Story>> GetStoriesAsync(StoryCategory category, int page = 0, int pageSize = 10, CancellationToken cancellationToken = default) => throw new NotImplementedException();
+    public async Task<PagedResponse<Story>> GetStoriesAsync(StoryCategory category, int page = 0, int pageSize = 10, CancellationToken cancellationToken = default)
+    {
+        return new()
+        {
+            Page = page,
+            PageSize = pageSize,
+            Items = await this._messageCache.GetItemsAsync(category, page, pageSize, cancellationToken),
+        };
+    }
 
     /// <inheritdoc />
     public Task<IEnumerable<Story>> FindStory(StoryCategory category, string searchText, CancellationToken cancellationToken = default) => throw new NotImplementedException();

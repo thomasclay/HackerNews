@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using System.Text.Json;
+﻿using System.Text.Json;
 
 using HackerNewsModels;
 using HackerNewsModels.Items;
@@ -97,6 +96,33 @@ public class MessageCacheService
             ServiceMetrics.ItemCacheMissCounter.Add(1);
         }
         return (state.FromCache, item);
+    }
+
+    /// <summary>
+    /// Retrieves a single item
+    /// </summary>
+    /// <param name="id">Item ID to retrieve</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Flag indicating if the item was read from the cache, and the item, or null if it doesn't exist.</returns>
+    public async Task<IEnumerable<Story>> GetItemsAsync(StoryCategory category, int page, int pageSize, CancellationToken cancellationToken)
+    {
+        var list = await GetStoryListAsync(category, cancellationToken);
+        var items = new List<Task<(bool FromCache, Item? Item)>>();
+        foreach (var id in list.Skip(page * pageSize).Take(pageSize))
+        {
+            items.Add(GetItemAsync(id, cancellationToken));
+        }
+        var results = await Task.WhenAll(items);
+
+        return results.Where(r => r.Item is Story).Select(r => (Story)r.Item!);
+    }
+
+    public Task<IEnumerable<long>> GetStoryListAsync(StoryCategory storyCategory, CancellationToken cancellationToken)
+    {
+        return this._cache.GetOrCreateAsync(
+            $"{ListCacheKeyPrefix}{storyCategory}",
+            _ => ValueTask.FromResult<IEnumerable<long>>([]),
+            cancellationToken: cancellationToken).AsTask();
     }
 
     /// <summary>
